@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 .idea/
 
 training/
@@ -141,3 +142,23 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+=======
+# Build and Release Folders
+bin-debug/
+bin-release/
+[Oo]bj/
+[Bb]in/
+
+# Other files and folders
+.settings/
+
+# Executables
+*.swf
+*.air
+*.ipa
+*.apk
+
+# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
+# should NOT be excluded as they contain compiler settings and other important
+# information for Eclipse / Flash Builder.
+>>>>>>> 90a116f4b2e97959d7d5246f6e2761e69dd70aed
