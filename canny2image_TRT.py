@@ -13,6 +13,7 @@ from annotator.util import resize_image, HWC3
 from annotator.canny import CannyDetector
 from cldm.model import create_model, load_state_dict
 from cldm.ddim_hacked import DDIMSampler
+from ldm.inference import *
 
 
 class hackathon():
@@ -23,7 +24,7 @@ class hackathon():
         self.model.load_state_dict(load_state_dict('/home/player/ControlNet/models/control_sd15_canny.pth', location='cuda'))
         self.model = self.model.cuda()
         self.ddim_sampler = DDIMSampler(self.model)
-
+        trt_setup()
 
     def process(self, input_image, prompt, a_prompt, n_prompt, num_samples, image_resolution, ddim_steps, guess_mode, strength, scale, seed, eta, low_threshold, high_threshold):
         with torch.no_grad():
