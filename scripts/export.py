@@ -9,7 +9,7 @@ from annotator.canny import CannyDetector
 from cldm.ddim_hacked import DDIMSampler
 
 EXPORT_CONTROLUNET = True
-EXPORT_CONTROLNET = False
+EXPORT_CONTROLNET = True
 EXPORT_FROZENCLIPEMBEDDER = False
 EXPORT_VAE = False
 
@@ -28,7 +28,7 @@ if EXPORT_CONTROLNET:
     input3 = torch.randn((1, 77, 768)).float().cuda()
     inputs = (input0,input1,input2,input3)
     # ControlNet
-    torch.onnx.export(model.control_model, inputs, './models/controlnet.onnx', verbose=True, input_names=['input0','input1','input2','input3'], output_names=['output0'] ) 
+    torch.onnx.export(model.control_model, inputs, './models/controlnet.onnx', opset_version=18, verbose=True, input_names=['input0','input1','input2','input3'], output_names=['output0'] ) 
 
 if EXPORT_CONTROLUNET:
     x = torch.randn((1, 4, 32, 48)).float().cuda()
@@ -51,16 +51,16 @@ if EXPORT_CONTROLUNET:
     only_mid_control = False
     inputs =  (x,timestep,context,control,only_mid_control)
     # ControlUNet
-    torch.onnx.export(model.model.diffusion_model, inputs, './models/controlunet.onnx',  input_names=['input0','input1','input2','input3','input4'], output_names=['output0'] ) 
+    torch.onnx.export(model.model.diffusion_model, inputs, './models/controlunet.onnx', opset_version=18, input_names=['input0','input1','input2','input3','input4'], output_names=['output0'] ) 
 
 if EXPORT_FROZENCLIPEMBEDDER:
     text = ['longbody, lowres, bad anatomy, bad hands, missing fingers']
     # FrozenCLIPEmbedder
-    torch.onnx.export(model.cond_stage_model, text, './models/FrozenCLIPEmbedder.onnx', verbose=True, input_names=['input0'], output_names=['output0'] ) 
+    torch.onnx.export(model.cond_stage_model, text, './models/FrozenCLIPEmbedder.onnx', opset_version=18, verbose=True, input_names=['input0'], output_names=['output0'] ) 
 
 if EXPORT_VAE:
     input0 = torch.randn((1, 3, 256,384)).float().cuda()
     # AutoencoderKL
-    torch.onnx.export(model.first_stage_model, input0, './models/AutoencoderKL.onnx', verbose=True, input_names=['input0'], output_names=['output0'] ) #指定模型的输入，以及onnx的输出路径
+    torch.onnx.export(model.first_stage_model, input0, './models/AutoencoderKL.onnx', opset_version=18, verbose=True, input_names=['input0'], output_names=['output0'] ) #指定模型的输入，以及onnx的输出路径
 
 print("Exporting .pth model to onnx model has been successful!")

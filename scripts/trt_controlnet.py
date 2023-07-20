@@ -31,12 +31,19 @@ import common
 trt.init_libnvinfer_plugins(None, "")
 
 TRT_LOGGER = trt.Logger()
-# for FP16 mode
-bUseFP16Mode = False
-# for INT8 model
-bUseINT8Mode = False
 
-def get_engine(onnx_file_path, engine_file_path="", shape=None):
+def get_args():
+    parser = argparse.ArgumentParser('Export Ernie TensorRT', add_help=False)
+    parser.add_argument('--onnx', default='./models/controlnet.onnx', type=str, help='Path of onnx file to load')
+    parser.add_argument('--trt', default='./engines/controlnet.trt', type=str, help='Path of trt engine to save')
+    parser.add_argument('--fp16', action='store_true', default=False, help='Enable FP16 mode or not, default is TF32 if it is supported')
+    parser.add_argument('--int8', action='store_true', default=False, help='Enable INT8 mode or not, default is TF32 if it is supported')
+    parser.add_argument('--log_level', default=1, type=int, help='Logger level. (0:VERBOSE, 1:INFO, 2:WARNING, 3:ERROR, 4:INTERNAL_ERROR)')
+    parser.add_argument('--ln', action='store_true', default=True, help='Replace ops with LayernormPlugin or not')
+    args = parser.parse_args()
+    return args
+
+def get_engine(args, onnx_file_path, engine_file_path="", shape=None):
     """Attempts to load a serialized engine if available, otherwise builds a new TensorRT engine and saves it."""
 
     def build_engine():
@@ -49,9 +56,9 @@ def get_engine(onnx_file_path, engine_file_path="", shape=None):
             TRT_LOGGER
         ) as runtime:
             config.max_workspace_size = 1 << 40  # 256MiB
-            if bUseFP16Mode:
+            if args.fp16:
                 config.set_flag(trt.BuilderFlag.FP16)
-            if bUseINT8Mode:
+            if args.int8:
                 # config.set_flag(trt.BuilderFlag.INT8)
                 # config.int8_calibrator = calibrator.MyCalibrator(calibrationDataPath, nCalibration, (1, 1, nHeight, nWidth), cacheFile)
                 # builder.max_batch_size = 1
@@ -90,13 +97,13 @@ def get_engine(onnx_file_path, engine_file_path="", shape=None):
         return build_engine()
 
 
-def main(onnx_file_path, engine_file_path="", shape=None):
+def main(args, onnx_file_path, engine_file_path="", shape=None):
     """Create a TensorRT engine for ONNX-based YOLOv3-608 and run inference."""
 
     # Try to load a previously generated YOLOv3-608 network graph in ONNX format:
     # Do inference with TensorRT
     trt_outputs = []
-    with get_engine(onnx_file_path, engine_file_path, shape) as engine, engine.create_execution_context() as context:
+    with get_engine(args, onnx_file_path, engine_file_path, shape) as engine, engine.create_execution_context() as context:
         inputs, outputs, bindings, stream = common.allocate_buffers(engine)
 
         nIO = engine.num_io_tensors
@@ -161,4 +168,6 @@ if __name__ == "__main__":
     onnx_file_path = "./models/controlnet.onnx"
     engine_file_path = "./engines/controlnet.trt"
     shape = None
-    main(onnx_file_path, engine_file_path, shape)
+    args = get_args()
+    # main(args, onnx_file_path, engine_file_path, shape)
+    get_engine(args, onnx_file_path, engine_file_path, shape)

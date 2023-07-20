@@ -22,7 +22,7 @@ from ldm.inference import *
 class ControlledUnetModel(UNetModel):
     def forward(self, x, timesteps=None, context=None, control=None, only_mid_control=False, **kwargs):
         
-        if USE_TRT_INFERENCE:
+        if get_trt_inference():
             return trt_controlunet_run(x, timesteps, context, control, only_mid_control)
         hs = []
         with torch.no_grad():
@@ -285,6 +285,8 @@ class ControlNet(nn.Module):
         return TimestepEmbedSequential(zero_module(conv_nd(self.dims, channels, channels, 1, padding=0)))
 
     def forward(self, x, hint, timesteps, context, **kwargs):
+        if USE_TRT_INFERENCE:
+            return trt_controlnet_run(x, hint, timesteps, context)
         t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
         emb = self.time_embed(t_emb)
 
