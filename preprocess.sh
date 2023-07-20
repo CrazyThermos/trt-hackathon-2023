@@ -7,8 +7,8 @@ else
 fi
 
 if [ ! -f "./models/controlunet.onnx" ];then
-    python ./scripts/export.py
-    python ./scripts/trt_controlunet.py
+    python3 ./scripts/export.py
+    python3 ./scripts/trt_controlunet.py
 else
-    python ./scripts/trt_controlunet.py
+    python3 ./scripts/trt_controlunet.py
 fi
