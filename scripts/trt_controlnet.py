@@ -169,5 +169,5 @@ if __name__ == "__main__":
     engine_file_path = "./engines/controlnet.trt"
     shape = None
     args = get_args()
-    # main(args, onnx_file_path, engine_file_path, shape)
-    get_engine(args, onnx_file_path, engine_file_path, shape)
+    main(args, onnx_file_path, engine_file_path, shape)
+    # get_engine(args, onnx_file_path, engine_file_path, shape)

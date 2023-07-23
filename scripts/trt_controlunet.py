@@ -39,6 +39,7 @@ def get_args():
     parser.add_argument('--trt', default='./engines/controlunet.trt', type=str, help='Path of trt engine to save')
     parser.add_argument('--fp16', action='store_true', default=False, help='Enable FP16 mode or not, default is TF32 if it is supported')
     parser.add_argument('--int8', action='store_true', default=False, help='Enable INT8 mode or not, default is TF32 if it is supported')
+    parser.add_argument('--only_export', action='store_true', default=False, help='Only export onnx to trt')
     parser.add_argument('--log_level', default=1, type=int, help='Logger level. (0:VERBOSE, 1:INFO, 2:WARNING, 3:ERROR, 4:INTERNAL_ERROR)')
     parser.add_argument('--ln', action='store_true', default=True, help='Replace ops with LayernormPlugin or not')
     args = parser.parse_args()
@@ -118,6 +119,7 @@ def main(args, onnx_file_path, engine_file_path="", shape=None):
         nInput = [engine.get_tensor_mode(lTensorName[i]) for i in range(nIO)].count(trt.TensorIOMode.INPUT)
 
         context = engine.create_execution_context()
+        _, stream = cudart.cudaStreamCreate()
         context.set_input_shape(lTensorName[0], [1, 4, 32, 48])
         context.set_input_shape(lTensorName[1], [1])
         context.set_input_shape(lTensorName[2], [1, 77, 768])
@@ -139,22 +141,22 @@ def main(args, onnx_file_path, engine_file_path="", shape=None):
             print("[%2d]%s->" % (i, "Input " if i < nInput else "Output"), engine.get_tensor_dtype(lTensorName[i]), engine.get_tensor_shape(lTensorName[i]), context.get_tensor_shape(lTensorName[i]), lTensorName[i])
 
         bufferH = []
-        input0 = np.random.randn(1, 4, 32, 48).astype(np.float32)
-        input1 = np.array([951]).astype(np.float32)
-        input2 = np.random.randn(1, 77, 768).astype(np.float32)
-        input3 = np.random.randn(1,320,32,48).astype(np.float32)
-        input4 = np.random.randn(1,320,32,48).astype(np.float32)
-        input5 = np.random.randn(1,320,32,48).astype(np.float32)
-        input6 = np.random.randn(1,320,16,24).astype(np.float32)
-        input7 = np.random.randn(1,640,16,24).astype(np.float32)
-        input8 = np.random.randn(1,640,16,24).astype(np.float32)
-        input9 = np.random.randn(1,640,8,12).astype(np.float32)
-        input10 = np.random.randn(1,1280,8,12).astype(np.float32)
-        input11 = np.random.randn(1,1280,8,12).astype(np.float32)
-        input12 = np.random.randn(1,1280,4,6).astype(np.float32)
-        input13 = np.random.randn(1,1280,4,6).astype(np.float32)
-        input14 = np.random.randn(1,1280,4,6).astype(np.float32)
-        input15 = np.random.randn(1,1280,4,6).astype(np.float32)
+        input0 = np.random.randn(1, 4, 32, 48).astype(np.float16)
+        input1 = np.array([951]).astype(np.float16)
+        input2 = np.random.randn(1, 77, 768).astype(np.float16)
+        input3 = np.random.randn(1,320,32,48).astype(np.float16)
+        input4 = np.random.randn(1,320,32,48).astype(np.float16)
+        input5 = np.random.randn(1,320,32,48).astype(np.float16)
+        input6 = np.random.randn(1,320,16,24).astype(np.float16)
+        input7 = np.random.randn(1,640,16,24).astype(np.float16)
+        input8 = np.random.randn(1,640,16,24).astype(np.float16)
+        input9 = np.random.randn(1,640,8,12).astype(np.float16)
+        input10 = np.random.randn(1,1280,8,12).astype(np.float16)
+        input11 = np.random.randn(1,1280,8,12).astype(np.float16)
+        input12 = np.random.randn(1,1280,4,6).astype(np.float16)
+        input13 = np.random.randn(1,1280,4,6).astype(np.float16)
+        input14 = np.random.randn(1,1280,4,6).astype(np.float16)
+        input15 = np.random.randn(1,1280,4,6).astype(np.float16)
 
         bufferH.append(np.ascontiguousarray(input0))
         bufferH.append(np.ascontiguousarray(input1))
@@ -181,25 +183,40 @@ def main(args, onnx_file_path, engine_file_path="", shape=None):
             bufferD.append(cudart.cudaMalloc(bufferH[i].nbytes)[1])
 
         for i in range(nInput):
-            cudart.cudaMemcpy(bufferD[i], bufferH[i].ctypes.data, bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyHostToDevice)
+            cudart.cudaMemcpyAsync(bufferD[i], bufferH[i].ctypes.data, bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyHostToDevice, stream)
 
         for i in range(nIO):
             context.set_tensor_address(lTensorName[i], int(bufferD[i]))
         
         time_start = time.time()  
-        context.execute_async_v3(0)
+        context.execute_async_v3(stream)
         time_end = time.time()  
 
         for i in range(nInput, nIO):
-            cudart.cudaMemcpy(bufferH[i].ctypes.data, bufferD[i], bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost)
+            cudart.cudaMemcpyAsync(bufferH[i].ctypes.data, bufferD[i], bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost, stream)
 
+        # CUDA Graph capture
+        cudart.cudaStreamBeginCapture(stream, cudart.cudaStreamCaptureMode.cudaStreamCaptureModeGlobal)
+        for i in range(nInput):
+            cudart.cudaMemcpyAsync(bufferD[i], bufferH[i].ctypes.data, bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyHostToDevice, stream)
+        context.execute_async_v3(stream)        
+        for i in range(nInput, nIO):
+            cudart.cudaMemcpyAsync(bufferH[i].ctypes.data, bufferD[i], bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost, stream)
+        #cudart.cudaStreamSynchronize(stream)  # no need to synchronize within the CUDA graph capture
+        _, graph = cudart.cudaStreamEndCapture(stream)
+        _, graphExe = cudart.cudaGraphInstantiate(graph, 0)
+        bufferH[-1] *= 0
+        cudart.cudaGraphLaunch(graphExe, stream)
+        cudart.cudaStreamSynchronize(stream)
+        
         for i in range(nIO):
             print(lTensorName[i])
-            print(bufferH[i])
+        print(bufferH[-1])
 
         for b in bufferD:
             cudart.cudaFree(b)
-
+        cudart.cudaStreamDestroy(stream)
+        
         print("Succeeded running model in TensorRT!")
         print("inference_time:{}".format(time_end-time_start))
 
@@ -210,5 +227,7 @@ if __name__ == "__main__":
     engine_file_path = "./engines/controlunet.trt"
     shape = None
     args = get_args()
-    # main(onnx_file_path, engine_file_path, shape)
-    get_engine(args, onnx_file_path, engine_file_path, shape)
+    if args.only_export:
+        get_engine(args, onnx_file_path, engine_file_path, shape)
+    else:
+        main(args, onnx_file_path, engine_file_path, shape)
