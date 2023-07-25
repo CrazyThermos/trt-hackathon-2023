@@ -34,8 +34,8 @@ TRT_LOGGER = trt.Logger()
 
 def get_args():
     parser = argparse.ArgumentParser('Export Ernie TensorRT', add_help=False)
-    parser.add_argument('--onnx', default='./models/FrozenCLIPEmbedder.onnx', type=str, help='Path of onnx file to load')
-    parser.add_argument('--trt', default='./engines/FrozenCLIPEmbedder.trt', type=str, help='Path of trt engine to save')
+    parser.add_argument('--onnx', default='./models/clip.onnx', type=str, help='Path of onnx file to load')
+    parser.add_argument('--trt', default='./engines/clip.plan', type=str, help='Path of trt engine to save')
     parser.add_argument('--fp16', action='store_true', default=False, help='Enable FP16 mode or not, default is TF32 if it is supported')
     parser.add_argument('--int8', action='store_true', default=False, help='Enable INT8 mode or not, default is TF32 if it is supported')
     parser.add_argument('--log_level', default=1, type=int, help='Logger level. (0:VERBOSE, 1:INFO, 2:WARNING, 3:ERROR, 4:INTERNAL_ERROR)')
@@ -83,8 +83,8 @@ def get_engine(args, onnx_file_path, engine_file_path="", shape=None):
 
             print("Completed parsing of ONNX file")
             inputTensor = network.get_input(0)  
-            profile.set_shape(inputTensor.name, (1, 77), (1, 77), (10, 77))    
-
+            profile.set_shape(inputTensor.name, (1, 77), (1, 77), (1, 77))    
+            config.add_optimization_profile(profile)
             print("Building an engine from file {}; this may take a while...".format(onnx_file_path))
             plan = builder.build_serialized_network(network, config)
             engine = runtime.deserialize_cuda_engine(plan)
@@ -109,7 +109,7 @@ def main(args, onnx_file_path, engine_file_path="", shape=None):
     # Do inference with TensorRT
     trt_outputs = []
     with get_engine(args, onnx_file_path, engine_file_path, shape) as engine, engine.create_execution_context() as context:
-        inputs, outputs, bindings, stream = common.allocate_buffers(engine)
+        # inputs, outputs, bindings, stream = common.allocate_buffers(engine)
 
         nIO = engine.num_io_tensors
         lTensorName = [engine.get_tensor_name(i) for i in range(nIO)]
@@ -170,8 +170,8 @@ def main(args, onnx_file_path, engine_file_path="", shape=None):
 
 
 if __name__ == "__main__":
-    onnx_file_path = "./models/FrozenCLIPEmbedder.onnx"
-    engine_file_path = "./engines/FrozenCLIPEmbedder.trt"
+    onnx_file_path = "./models/clip.onnx"
+    engine_file_path = "./engines/clip.plan"
     shape = None
     args = get_args()
     main(args, onnx_file_path, engine_file_path, shape)

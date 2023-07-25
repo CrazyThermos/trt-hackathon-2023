@@ -224,7 +224,7 @@ def main(args, onnx_file_path, engine_file_path="", shape=None):
 
 if __name__ == "__main__":
     onnx_file_path = "./models/controlunet.onnx"
-    engine_file_path = "./engines/controlunet.trt"
+    engine_file_path = "./engines/controlunet.plan"
     shape = None
     args = get_args()
     if args.only_export:

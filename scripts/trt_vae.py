@@ -34,8 +34,8 @@ TRT_LOGGER = trt.Logger()
 
 def get_args():
     parser = argparse.ArgumentParser('Export Ernie TensorRT', add_help=False)
-    parser.add_argument('--onnx', default='./models/FrozenCLIPEmbedder.onnx', type=str, help='Path of onnx file to load')
-    parser.add_argument('--trt', default='./engines/FrozenCLIPEmbedder.trt', type=str, help='Path of trt engine to save')
+    parser.add_argument('--onnx', default='./models/vae_encoder.onnx', type=str, help='Path of onnx file to load')
+    parser.add_argument('--trt', default='./engines/vae_encoder.plan', type=str, help='Path of trt engine to save')
     parser.add_argument('--fp16', action='store_true', default=False, help='Enable FP16 mode or not, default is TF32 if it is supported')
     parser.add_argument('--int8', action='store_true', default=False, help='Enable INT8 mode or not, default is TF32 if it is supported')
     parser.add_argument('--log_level', default=1, type=int, help='Logger level. (0:VERBOSE, 1:INFO, 2:WARNING, 3:ERROR, 4:INTERNAL_ERROR)')
@@ -154,8 +154,8 @@ def main(args, onnx_file_path, engine_file_path="", shape=None):
 
 
 if __name__ == "__main__":
-    onnx_file_path = "./models/AutoencoderKL.onnx"
-    engine_file_path = "./engines/AutoencoderKL.trt"
+    onnx_file_path = "./models/vae_encoder.onnx"
+    engine_file_path = "./engines/vae_encoder.plan"
     shape = None
     args = get_args()
     main(args, onnx_file_path, engine_file_path, shape)

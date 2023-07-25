@@ -122,10 +122,10 @@ def main(args, onnx_file_path, engine_file_path="", shape=None):
 
         bufferH = []
 
-        input0 = np.random.randn(1, 4, 32, 48).astype(np.float32)
-        input1 = np.random.randn(1, 3, 256, 384).astype(np.float32)
-        input2 = np.array(1).astype(np.float32)
-        input3 = np.random.randn(1, 77, 768).astype(np.float32)
+        input0 = np.random.randn(1, 4, 32, 48).astype(np.float16)
+        input1 = np.random.randn(1, 3, 256, 384).astype(np.float16)
+        input2 = np.array(1).astype(np.float16)
+        input3 = np.random.randn(1, 77, 768).astype(np.float16)
 
 
         bufferH.append(np.ascontiguousarray(input0))
@@ -166,7 +166,7 @@ def main(args, onnx_file_path, engine_file_path="", shape=None):
 
 if __name__ == "__main__":
     onnx_file_path = "./models/controlnet.onnx"
-    engine_file_path = "./engines/controlnet.trt"
+    engine_file_path = "./engines/controlnet.plan"
     shape = None
     args = get_args()
     main(args, onnx_file_path, engine_file_path, shape)

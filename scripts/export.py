@@ -81,12 +81,26 @@ def export(args):
         output_hidden_states = False
         inputs = (tokens)
         # FrozenCLIPEmbedder
-        torch.onnx.export(model.cond_stage_model.transformer, inputs, './models/FrozenCLIPEmbedder.onnx', opset_version=18, verbose=True, input_names=['input0'], output_names=['output0'] ) 
+        batch_size = 1
+        text_maxlen = 77
+        torch.onnx.export(model.cond_stage_model.transformer,
+        inputs,
+        './models/clip.onnx',
+        export_params=True,
+        opset_version=18,
+        do_constant_folding=True,
+        input_names= ['input_ids'],
+        output_names=['text_embeddings', 'pooler_output'],
+        dynamic_axes={
+            'input_ids': {0: 'B'},
+            'text_embeddings': {0: 'B'}
+        }
+        )
 
     if EXPORT_VAE:
         input0 = torch.randn((1, 4, 32, 48)).float().cuda()
         # AutoencoderKL
-        torch.onnx.export(model.first_stage_model.decoder, input0, './models/AutoencoderKL.onnx', opset_version=18, verbose=True, input_names=['input0'], output_names=['output0'] ) #指定模型的输入，以及onnx的输出路径
+        torch.onnx.export(model.first_stage_model.decoder, input0, './models/vae_encoder.onnx', opset_version=18, verbose=True, input_names=['input0'], output_names=['output0'] ) #指定模型的输入，以及onnx的输出路径
 
     print("Exporting .pth model to onnx model has been successful!")
 

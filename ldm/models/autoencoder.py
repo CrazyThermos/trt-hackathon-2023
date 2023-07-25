@@ -8,7 +8,7 @@ from ldm.modules.distributions.distributions import DiagonalGaussianDistribution
 
 from ldm.util import instantiate_from_config
 from ldm.modules.ema import LitEma
-
+from ldm.inference import *
 
 class AutoencoderKL(pl.LightningModule):
     def __init__(self,
@@ -87,6 +87,8 @@ class AutoencoderKL(pl.LightningModule):
 
     def decode(self, z):
         z = self.post_quant_conv(z)
+        if USE_TRT_INFERENCE:
+            return trt_vae_run(z)
         dec = self.decoder(z)
         return dec
 
