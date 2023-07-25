@@ -116,6 +116,7 @@ def trt_clip_run(tokens):
 
         for i in range(nInput, nIO):
             bufferH.append(np.empty(context.get_tensor_shape(lTensorName[i]), dtype=trt.nptype(engine.get_tensor_dtype(lTensorName[i]))))
+        cudart.cudaStreamSynchronize(stream)
         if False:
             CAPTURE = clip_temp == 0 # lazy method
             if CAPTURE:        
@@ -150,15 +151,16 @@ def trt_clip_run(tokens):
             for i in range(nIO):
                 bufferD.append(cudart.cudaMalloc(bufferH[i].nbytes)[1])
             for i in range(nInput):
-                cudart.cudaMemcpy(bufferD[i], bufferH[i].ctypes.data, bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyHostToDevice)
+                cudart.cudaMemcpyAsync(bufferD[i], bufferH[i].ctypes.data, bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyHostToDevice, stream)
             for i in range(nIO):
                 context.set_tensor_address(lTensorName[i], int(bufferD[i]))
-            context.execute_async_v3(0)
+            context.execute_async_v3(stream)
             for i in range(nInput, nIO):
-                cudart.cudaMemcpy(bufferH[i].ctypes.data, bufferD[i], bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost)
+                cudart.cudaMemcpyAsync(bufferH[i].ctypes.data, bufferD[i], bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost, stream)
+            cudart.cudaStreamSynchronize(stream)
             for b in bufferD:
                 cudart.cudaFree(b)
-            return torch.tensor(bufferH[-1]).cuda()
+            return torch.tensor(bufferH[-2]).cuda()
 
 
 def set_vae_context(vae_engine):
@@ -195,6 +197,7 @@ def trt_vae_run(z):
 
         for i in range(nInput, nIO):
             bufferH.append(np.empty(context.get_tensor_shape(lTensorName[i]), dtype=trt.nptype(engine.get_tensor_dtype(lTensorName[i]))))
+        cudart.cudaStreamSynchronize(stream)
         if False:
             CAPTURE = clip_temp == 0 # lazy method
             if CAPTURE:        
@@ -229,12 +232,13 @@ def trt_vae_run(z):
             for i in range(nIO):
                 bufferD.append(cudart.cudaMalloc(bufferH[i].nbytes)[1])
             for i in range(nInput):
-                cudart.cudaMemcpy(bufferD[i], bufferH[i].ctypes.data, bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyHostToDevice)
+                cudart.cudaMemcpyAsync(bufferD[i], bufferH[i].ctypes.data, bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyHostToDevice,stream)
             for i in range(nIO):
                 context.set_tensor_address(lTensorName[i], int(bufferD[i]))
-            context.execute_async_v3(0)
+            context.execute_async_v3(stream)
             for i in range(nInput, nIO):
-                cudart.cudaMemcpy(bufferH[i].ctypes.data, bufferD[i], bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost)
+                cudart.cudaMemcpyAsync(bufferH[i].ctypes.data, bufferD[i], bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost,stream)
+            cudart.cudaStreamSynchronize(stream)
             for b in bufferD:
                 cudart.cudaFree(b)
             return torch.tensor(bufferH[-1]).cuda()
@@ -259,7 +263,7 @@ def set_controlnet_context(controlnet_engine):
         return context, stream
 
 controlnet_temp = 0
-def trt_controlnet_run(x, hint, timesteps, context):
+def trt_controlnet_run(x, hint, timesteps, context_):
         global controlnet_engine
         global controlnet_context
         global controlnet_stream
@@ -274,19 +278,15 @@ def trt_controlnet_run(x, hint, timesteps, context):
         nInput = [engine.get_tensor_mode(lTensorName[i]) for i in range(nIO)].count(trt.TensorIOMode.INPUT)
         
         bufferH = []
-        if USE_FP16:
-            bufferH.append(np.ascontiguousarray(x.cpu().numpy().astype(np.float16)))
-            bufferH.append(np.ascontiguousarray(hint.cpu().numpy().astype(np.float16)))
-            bufferH.append(np.ascontiguousarray(timesteps.cpu().numpy().astype(np.float16)))
-            bufferH.append(np.ascontiguousarray(context.cpu().numpy().astype(np.float16)))
-        else:
-            bufferH.append(np.ascontiguousarray(x.cpu().numpy()))
-            bufferH.append(np.ascontiguousarray(hint.cpu().numpy()))
-            bufferH.append(np.ascontiguousarray(timesteps.cpu().numpy()))
-            bufferH.append(np.ascontiguousarray(context.cpu().numpy()))
+
+        bufferH.append(np.ascontiguousarray(x.cpu().numpy()))
+        bufferH.append(np.ascontiguousarray(hint.cpu().numpy()))
+        bufferH.append(np.ascontiguousarray(timesteps.cpu().numpy()))
+        bufferH.append(np.ascontiguousarray(context_.cpu().numpy()))
 
         for i in range(nInput, nIO):
             bufferH.append(np.empty(context.get_tensor_shape(lTensorName[i]), dtype=trt.nptype(engine.get_tensor_dtype(lTensorName[i]))))
+        cudart.cudaStreamSynchronize(stream)
         if False:
             CAPTURE = controlnet_temp == 0 # lazy method
             if CAPTURE:        
@@ -321,15 +321,16 @@ def trt_controlnet_run(x, hint, timesteps, context):
             for i in range(nIO):
                 bufferD.append(cudart.cudaMalloc(bufferH[i].nbytes)[1])
             for i in range(nInput):
-                cudart.cudaMemcpy(bufferD[i], bufferH[i].ctypes.data, bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyHostToDevice)
+                cudart.cudaMemcpyAsync(bufferD[i], bufferH[i].ctypes.data, bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyHostToDevice,stream)
             for i in range(nIO):
                 context.set_tensor_address(lTensorName[i], int(bufferD[i]))
-            context.execute_async_v3(0)
+            context.execute_async_v3(stream)
             for i in range(nInput, nIO):
-                cudart.cudaMemcpy(bufferH[i].ctypes.data, bufferD[i], bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost)
+                cudart.cudaMemcpyAsync(bufferH[i].ctypes.data, bufferD[i], bufferH[i].nbytes, cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost, stream)
+            cudart.cudaStreamSynchronize(stream)
             for b in bufferD:
                 cudart.cudaFree(b)
-            return torch.tensor(bufferH[-1]).cuda()
+            return [torch.tensor(bufferH[i]).cuda() for i in range(4,17)]
 
 
 def set_controlunet_context(controlunet_engine):
@@ -416,8 +417,8 @@ def trt_controlunet_run(x, timesteps=None, context_=None, control=None, only_mid
     for i in range(nInput, nIO):
         bufferH.append(np.empty(context.get_tensor_shape(lTensorName[i]), dtype=trt.nptype(engine.get_tensor_dtype(lTensorName[i]))))
     bufferD = []
-    for i in range(nIO):
-        bufferD.append(cudart.cudaMalloc(bufferH[i].nbytes)[1])
+    # for i in range(nIO):
+    #     bufferD.append(cudart.cudaMalloc(bufferH[i].nbytes)[1])
     cudart.cudaStreamSynchronize(stream)
     CAPTURE = controlunet_temp == 0 # lazy method
     if USE_CUDAGRAPH:

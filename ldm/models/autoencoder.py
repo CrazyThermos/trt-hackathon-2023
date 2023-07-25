@@ -87,7 +87,7 @@ class AutoencoderKL(pl.LightningModule):
 
     def decode(self, z):
         z = self.post_quant_conv(z)
-        if USE_TRT_INFERENCE:
+        if get_trt_inference():
             return trt_vae_run(z)
         dec = self.decoder(z)
         return dec
