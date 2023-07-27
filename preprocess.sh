@@ -1,21 +1,22 @@
 echo "preprocess"
-FILE=./engines/
-if [ ! -d "$FILE" ]; then
-    mkdir ./engines
+ONNX_DIR=./onnx/
+ENGINE_DIR=./engine/
+
+if [ ! -d "$ONNX_DIR" ]; then
+    mkdir ./onnx
 else
-    echo "engines dir is existed!"
+    echo "onnx dir is existed!"
 fi
 
-if [ ! -f "./models/controlunet.onnx" ];then
-    python3 ./scripts/export.py --controlnet --controlunet --vae --clip
-    python3 ./scripts/trt_controlnet.py --fp16
-    python3 ./scripts/trt_controlunet.py --fp16
-    python3 ./scripts/trt_clip.py 
-    python3 ./scripts/trt_vae.py --fp16
-
+if [ ! -d "$ENGINE_DIR" ]; then
+    mkdir ./engine
 else
-    python3 ./scripts/trt_controlnet.py --fp16
-    python3 ./scripts/trt_controlunet.py --fp16
-    python3 ./scripts/trt_clip.py 
-    python3 ./scripts/trt_vae.py --fp16
+    echo "engine dir is existed!"
+fi
+
+if [ ! -f "./onnx/controlunet.onnx" -o ! -f "./onnx/controlnet.onnx" -o ! -f "./onnx/vae.onnx" -o ! -f "./onnx/clip.onnx" ];then
+    python3 ./scripts/export.py --controlnet --controlunet --vae --clip
+    python3 ./scripts/onnx2trt.py 
+else
+    python3 ./scripts/onnx2trt.py 
 fi

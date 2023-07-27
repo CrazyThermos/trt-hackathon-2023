@@ -6,7 +6,7 @@ from transformers import T5Tokenizer, T5EncoderModel, CLIPTokenizer, CLIPTextMod
 
 import open_clip
 from ldm.util import default, count_params
-from ldm.inference import *
+from scripts.inference import *
 
 class AbstractEncoder(nn.Module):
     def __init__(self):
@@ -120,8 +120,8 @@ class FrozenCLIPEmbedder(AbstractEncoder):
                                         return_overflowing_tokens=False, padding="max_length", return_tensors="pt")
         tokens = batch_encoding["input_ids"].to(self.device)
         outputs=None
-        if get_trt_inference():
-             return trt_clip_run(tokens)
+        if get_trt_inference('clip'):
+             return launch_clip(tokens)
         else:
             outputs = self.transformer(input_ids=tokens, output_hidden_states=self.layer=="hidden")
         if self.layer == "last":

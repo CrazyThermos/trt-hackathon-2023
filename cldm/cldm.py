@@ -17,13 +17,13 @@ from ldm.modules.diffusionmodules.openaimodel import UNetModel, TimestepEmbedSeq
 from ldm.models.diffusion.ddpm import LatentDiffusion
 from ldm.util import log_txt_as_img, exists, instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
-from ldm.inference import *
+from scripts.inference import *
 
 class ControlledUnetModel(UNetModel):
     def forward(self, x, timesteps=None, context=None, control=None, only_mid_control=False, **kwargs):
         
-        if get_trt_inference():
-            return trt_controlunet_run(x, timesteps, context, control, only_mid_control)
+        if get_trt_inference('controlunet'):
+            return launch_controlunet(x, timesteps, context, control)
         hs = []
         with torch.no_grad():
             t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
@@ -285,8 +285,8 @@ class ControlNet(nn.Module):
         return TimestepEmbedSequential(zero_module(conv_nd(self.dims, channels, channels, 1, padding=0)))
 
     def forward(self, x, hint, timesteps, context, **kwargs):
-        if get_trt_inference():
-            return trt_controlnet_run(x, hint, timesteps, context)
+        if get_trt_inference('controlnet'):
+            return launch_controlnet(x, hint, timesteps, context)
         t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
         emb = self.time_embed(t_emb)
 
